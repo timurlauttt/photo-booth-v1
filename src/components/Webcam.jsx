@@ -1,155 +1,105 @@
-import { useState, useRef, useCallback } from 'react';
+import { forwardRef } from 'react';
 import Webcam from 'react-webcam';
-import html2canvas from 'html2canvas';
-import './App.css';
 
-function App() {
-    const webcamRef = useRef(null);
-    const stripRef = useRef(null);
-    const [photos, setPhotos] = useState([]);
-    const [countdown, setCountdown] = useState(null);
-    const [isCapturing, setIsCapturing] = useState(false);
+const WebcamComponent = forwardRef(({ 
+  filter, 
+  countdown, 
+  isCapturing, 
+  onStartSession, 
+  onReset, 
+  onDownload, 
+  photoCount, 
+  setPhotoCount,
+  setFilter,
+  photos
+}, ref) => {
+  return (
+    <div className="webcam-section">
+      <div className={`webcam-wrapper filter-${filter}`}>
+        <Webcam
+          ref={ref}
+          screenshotFormat="image/jpeg"
+          videoConstraints={{
+            width: 640,
+            height: 480,
+            facingMode: "user"
+          }}
+        />
 
-    // Ambil 1 foto
-    const capturePhoto = useCallback(() => {
-        const imageSrc = webcamRef.current?.getScreenshot();
-        if (imageSrc) {
-            setPhotos(prev => [...prev, imageSrc]);
-        }
-    }, []);
+        {/* Countdown Overlay */}
+        {countdown && (
+          <div className="countdown-overlay">
+            <span className="countdown-number">{countdown}</span>
+          </div>
+        )}
+      </div>
 
-    // Ambil 6 foto dengan countdown
-    const startPhotoSession = useCallback(async () => {
-        setPhotos([]);
-        setIsCapturing(true);
+      {/* Filter Controls */}
+      <div className="filter-controls">
+        <button 
+          onClick={() => setFilter('none')}
+          className={`btn-filter ${filter === 'none' ? 'active' : ''}`}
+        >
+          Normal
+        </button>
+        <button 
+          onClick={() => setFilter('grayscale')}
+          className={`btn-filter ${filter === 'grayscale' ? 'active' : ''}`}
+        >
+          Black & White
+        </button>
+      </div>
 
-        for (let i = 0; i < 6; i++) {
-            // Countdown 3 detik
-            for (let j = 3; j > 0; j--) {
-                setCountdown(j);
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            }
+      {/* Photo Count Controls */}
+      <div className="photo-count-controls">
+        <button 
+          onClick={() => setPhotoCount(4)}
+          className={`btn-filter ${photoCount === 4 ? 'active' : ''}`}
+          disabled={isCapturing}
+        >
+          4 Photos
+        </button>
+        <button 
+          onClick={() => setPhotoCount(6)}
+          className={`btn-filter ${photoCount === 6 ? 'active' : ''}`}
+          disabled={isCapturing}
+        >
+          6 Photos
+        </button>
+      </div>
 
-            setCountdown(null);
-            capturePhoto();
+      {/* Controls */}
+      <div className="controls">
+        <button 
+          onClick={onStartSession}
+          disabled={isCapturing}
+          className="btn btn-primary"
+        >
+          Start Photo Session ({photoCount} Photos)
+        </button>
+        
+        {photos.length === photoCount && (
+          <>
+            <button 
+              onClick={onReset}
+              className="btn btn-secondary"
+            >
+              Reset
+            </button>
+            
+            <button 
+              onClick={onDownload}
+              className="btn btn-success"
+            >
+              Download
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+});
 
-            // Delay 1 detik sebelum foto berikutnya
-            await new Promise(resolve => setTimeout(resolve, 1000));
-        }
+WebcamComponent.displayName = 'WebcamComponent';
 
-        setIsCapturing(false);
-    }, [capturePhoto]);
-
-    // Download hasil sebagai gambar
-    const downloadStrip = useCallback(async () => {
-        if (stripRef.current) {
-            const canvas = await html2canvas(stripRef.current, {
-                backgroundColor: '#ffffff',
-                scale: 2
-            });
-
-            const link = document.createElement('a');
-            link.download = `photostrip-${Date.now()}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-        }
-    }, []);
-
-    return (
-        <div className="app">
-            <div className="container">
-                <h1>📸 Photo Booth</h1>
-
-                {/* Webcam Section */}
-                <div className="webcam-section">
-                    <div className="webcam-wrapper">
-                        <Webcam
-                            ref={webcamRef}
-                            screenshotFormat="image/jpeg"
-                            videoConstraints={{
-                                width: 640,
-                                height: 480,
-                                facingMode: "user"
-                            }}
-                        />
-
-                        {/* Countdown Overlay */}
-                        {countdown && (
-                            <div className="countdown-overlay">
-                                <span className="countdown-number">{countdown}</span>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Controls */}
-                    <div className="controls">
-                        <button
-                            onClick={startPhotoSession}
-                            disabled={isCapturing}
-                            className="btn btn-primary"
-                        >
-                            📸 Mulai Sesi Foto (6 Foto)
-                        </button>
-
-                        {photos.length === 6 && (
-                            <>
-                                <button
-                                    onClick={() => setPhotos([])}
-                                    className="btn btn-secondary"
-                                >
-                                    🔄 Ulangi
-                                </button>
-                                <button
-                                    onClick={downloadStrip}
-                                    className="btn btn-success"
-                                >
-                                    💾 Download
-                                </button>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                {/* Photo Strip Preview */}
-                {photos.length > 0 && (
-                    <div className="preview-section">
-                        <h2>Preview:</h2>
-                        <div ref={stripRef} className="photo-strip">
-                            <div className="strip-border">
-                                <div className="photo-grid">
-                                    {Array.from({ length: 6 }).map((_, index) => (
-                                        <div key={index} className="photo-slot">
-                                            {photos[index] ? (
-                                                <img
-                                                    src={photos[index]}
-                                                    alt={`Photo ${index + 1}`}
-                                                />
-                                            ) : (
-                                                <div className="photo-placeholder">
-                                                    {index + 1}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="strip-footer">
-                                    <p className="strip-title">photobooth</p>
-                                    <p className="strip-date">
-                                        {new Date().toLocaleDateString('id-ID', {
-                                            day: '2-digit',
-                                            month: '2-digit',
-                                            year: 'numeric'
-                                        })}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-}
-
-export default App;
+export default WebcamComponent;

@@ -1,19 +1,21 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
+import WebcamComponent from './components/Webcam';
+import PhotoStrip from './components/PhotoStrip';
 import './App.css';
 
 function App() {
-  const webcamRef = useRef<Webcam>(null);
-  const stripRef = useRef<HTMLDivElement>(null);
-  const [photos, setPhotos] = useState<string[]>([]);
-  const [countdown, setCountdown] = useState<number | null>(null);
+  const webcamRef = useRef(null);
+  const stripRef = useRef(null);
+  const [photos, setPhotos] = useState([]);
+  const [countdown, setCountdown] = useState(null);
   const [isCapturing, setIsCapturing] = useState(false);
-  const [filter, setFilter] = useState<'none' | 'grayscale' | 'vintage'>('none');
-  const [photoCount, setPhotoCount] = useState<4 | 6>(6);
-  const [livePreview, setLivePreview] = useState<string | null>(null);
+  const [filter, setFilter] = useState('none');
+  const [photoCount, setPhotoCount] = useState(6);
+  const [livePreview, setLivePreview] = useState(null);
 
   // Apply filter to image
-  const applyFilter = useCallback((imageSrc: string, filterType: string): Promise<string> => {
+  const applyFilter = useCallback((imageSrc, filterType) => {
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
@@ -169,7 +171,7 @@ function App() {
       ctx.fillRect(borderWidth, borderWidth, canvasWidth - (borderWidth * 2), canvasHeight - (borderWidth * 2));
 
       // Load dan draw semua foto
-      const loadImage = (src: string): Promise<HTMLImageElement> => {
+      const loadImage = (src) => {
         return new Promise((resolve, reject) => {
           const img = new Image();
           img.onload = () => resolve(img);
@@ -211,7 +213,7 @@ function App() {
       ctx.fillStyle = '#000000';
       ctx.font = 'italic 11px Arial';
       ctx.textAlign = 'center';
-      const quoteText = "'Photography is the story I fail to put into words'";
+      const quoteText = "Photography is the story I fail to put into words";
       ctx.fillText(quoteText, canvasWidth / 2, footerY + 20);
 
       // Author
@@ -245,134 +247,28 @@ function App() {
       <div className="container">
         {/* Main Content - Side by Side */}
         <div className="main-content">
-          {/* Webcam Section */}
-          <div className="webcam-section">
-            <div className={`webcam-wrapper filter-${filter}`}>
-              <Webcam
-                ref={webcamRef}
-                screenshotFormat="image/jpeg"
-                videoConstraints={{
-                  width: 640,
-                  height: 480,
-                  facingMode: "user"
-                }}
-              />
+          {/* Webcam Component */}
+          <WebcamComponent
+            ref={webcamRef}
+            filter={filter}
+            countdown={countdown}
+            isCapturing={isCapturing}
+            onStartSession={startPhotoSession}
+            onReset={() => setPhotos([])}
+            onDownload={downloadStrip}
+            photoCount={photoCount}
+            setPhotoCount={setPhotoCount}
+            setFilter={setFilter}
+            photos={photos}
+          />
 
-              {/* Countdown Overlay */}
-              {countdown && (
-                <div className="countdown-overlay">
-                  <span className="countdown-number">{countdown}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Filter Controls */}
-            <div className="filter-controls">
-              <button
-                onClick={() => setFilter('none')}
-                className={`btn-filter ${filter === 'none' ? 'active' : ''}`}
-              >
-                Normal
-              </button>
-              <button
-                onClick={() => setFilter('grayscale')}
-                className={`btn-filter ${filter === 'grayscale' ? 'active' : ''}`}
-              >
-                Black & White
-              </button>
-            </div>
-
-            {/* Photo Count Selection */}
-            <div className="photo-count-controls">
-              <button
-                onClick={() => setPhotoCount(4)}
-                className={`btn-filter ${photoCount === 4 ? 'active' : ''}`}
-                disabled={isCapturing}
-              >
-                4 Photos
-              </button>
-              <button
-                onClick={() => setPhotoCount(6)}
-                className={`btn-filter ${photoCount === 6 ? 'active' : ''}`}
-                disabled={isCapturing}
-              >
-                6 Photos
-              </button>
-            </div>
-
-            {/* Controls */}
-            <div className="controls">
-              <button
-                onClick={startPhotoSession}
-                disabled={isCapturing}
-                className="btn btn-primary"
-              >
-                Start Photo Session ({photoCount} Photos)
-              </button>
-
-              {photos.length === photoCount && (
-                <>
-                  <button
-                    onClick={() => setPhotos([])}
-                    className="btn btn-secondary"
-                  >
-                    🔄 Reset
-                  </button>
-                  <button
-                    onClick={downloadStrip}
-                    className="btn btn-success"
-                  >
-                    💾 Download
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Photo Strip Preview - Always shown */}
-          <div className="preview-section">
-            <div ref={stripRef} className="photo-strip">
-              <div className="strip-border">
-                <div className={`photo-grid photo-grid-${photoCount}`}>
-                  {Array.from({ length: photoCount }).map((_, index) => (
-                    <div key={index} className="photo-slot">
-                      {photos[index] ? (
-                        <img
-                          src={photos[index]}
-                          alt={`Photo ${index + 1}`}
-                        />
-                      ) : livePreview && index === photos.length ? (
-                        <img
-                          src={livePreview}
-                          alt="Live preview"
-                          className="live-preview"
-                        />
-                      ) : (
-                        <div className="photo-placeholder">
-                          {index + 1}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                  <div className="strip-footer">
-                    <p className="strip-title">'Photography is the story I fail to put into words'</p>
-                    <p className="strip-subtitle">~ Destin Sparks</p>
-                    <p className="strip-date">
-                      {new Date().toLocaleString('id-ID', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false,
-                      })}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+          {/* Photo Strip Component */}
+          <PhotoStrip
+            ref={stripRef}
+            photos={photos}
+            photoCount={photoCount}
+            livePreview={livePreview}
+          />
         </div>
       </div>
     </div>
